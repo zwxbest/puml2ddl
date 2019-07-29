@@ -1,14 +1,13 @@
 package main
 
 import (
-	"util"
-	"lexer"
 	"fmt"
-	"token"
-	"parser"
 	"io"
+	"lexer"
 	"os"
+	"parser"
 	"strings"
+	"util"
 )
 
 func main() {
@@ -16,36 +15,36 @@ func main() {
 	util.Read("er.puml", handleLine);
 }
 
-var block string = ""
-var inBlock bool
+var block  = ""
 var startLineN int
+var inBlock = false;
 
-func handleLine(line string, lineN int) {
+func handleLine(line string, lineN int) bool{
 	if startOfBlock(line) {
 		block += line
 		inBlock = true
 		startLineN = lineN
-		return
+		return true
 	}
 	if endOfBlock(line) {
 		block += line
+		//开始处理
+		l := lexer.New(block, startLineN)
+		p := parser.New(l)
+		program := p.ParseProgram()
+		if len(p.Errors()) != 0 {
+			printParserErrors(os.Stdout, p.Errors())
+			return false
+		}
+		block = ""
+		fmt.Printf("%+v\n", program)
 		inBlock = false
 	}
-
-	l := lexer.New(block, startLineN)
-	p := parser.New(l)
-	program := p.ParseProgram()
-	if len(p.Errors()) != 0 {
-		printParserErrors(os.Stdout, p.Errors())
-		return
+	if inBlock == true {
+		block += line
+		return true
 	}
-
-	io.WriteString(os.Stdout, program.String())
-	io.WriteString(os.Stdout, "\n")
-
-	for tok := l.NextToken(); tok.Type != token.EOF; tok = l.NextToken() {
-		fmt.Printf("%+v\n", tok)
-	}
+	return true
 }
 
 //忽略该行

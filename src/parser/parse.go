@@ -1,10 +1,10 @@
 package parser
 
 import (
+	"ast"
+	"fmt"
 	"lexer"
 	"token"
-	"fmt"
-	"ast"
 )
 
 type Parser struct {
@@ -20,7 +20,6 @@ func New(l *lexer.Lexer) *Parser {
 		l:      l,
 		errors: []string{},
 	}
-
 	// Read two tokens, so curToken and peekToken are both set
 	p.nextToken()
 	p.nextToken()
@@ -47,6 +46,7 @@ func (p *Parser) expectPeek(t token.TokenType) bool {
 		return true
 	} else {
 		p.peekError(t)
+		panic(t)
 		return false
 	}
 }
@@ -56,8 +56,8 @@ func (p *Parser) Errors() []string {
 }
 
 func (p *Parser) peekError(t token.TokenType) {
-	msg := fmt.Sprintf("expected next token to be %s, got %s instead",
-		t, p.peekToken.Type)
+	msg := fmt.Sprintf("Line %d : expected next token to be %s, got %s[%s] instead",
+		p.l.LineN, t, p.peekToken.Type, p.peekToken.Literal)
 	p.errors = append(p.errors, msg)
 }
 
@@ -65,48 +65,91 @@ func (p *Parser) ParseProgram() *ast.Program {
 	program := &ast.Program{}
 	program.Tables = []ast.Table{}
 
-	for !p.curTokenIs(token.EOF) {
-		table := p.parseTable()
-		if table != nil {
-			program.Tables = append(program.Tables, *table)
-		}
-		p.nextToken()
+	table := p.parseTable()
+	if table != nil {
+		program.Tables = append(program.Tables, *table)
 	}
 	return program
 }
 
 func (p *Parser) parseTable() *ast.Table {
 	table := &ast.Table{}
-
-	//table的名字
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
-
 	table.Name = p.curToken.Literal
-
-	if p.peekTokenIs(token.AS) {
+	p.nextToken()
+	if p.curTokenIs(token.AS) {
 		p.nextToken()
 		p.nextToken()
 	}
+	if !p.curTokenIs(token.LBRACE) {
+		return nil
+	}
+	p.nextToken()
+	for {
+		if !p.curTokenIs(token.ASTERISK) {
+			break
+		}
+		column := p.parseColumn()
+		if column == nil {
+			return nil
+		}
+		table.Columns = append(table.Columns, *column)
+	}
+	for {
+		if p.curTokenIs(token.PRIMARY_KEY) ||p.curTokenIs(token.KEY) || p.curTokenIs(token.UNIQUE_KEY) {
+			if !p.handleKey(table) {
+				return nil
+			}
+		}else {
+			break
+		}
+	}
+	//comment
+	if p.curTokenIs(token.COMMENT) {
+		if !p.expectPeek(token.IDENT) {
+			return nil
+		}
+		table.Comment = p.curToken.Literal
+	}
+	return table
+}
 
-	if p.peekTokenIs(token.LBRACE) {
+func (p *Parser) handleKey(table *ast.Table) bool {
+	if p.curTokenIs(token.PRIMARY_KEY) {
+		if !p.expectPeek(token.IDENT) {
+			return false
+		}
+		table.Pk.Exist = true
+		table.Pk.Keys = p.curToken.Literal
 		p.nextToken()
 	}
-
-	if p.peekTokenIs(token.ASTERISK) {
-
-	}
-
-	table.Columns = append(table.Columns, *p.parseColumn())
-
-	stmt.Value = p.parseExpression(LOWEST)
-
-	if p.peekTokenIs(token.SEMICOLON) {
+	if p.curTokenIs(token.KEY) {
+		if !p.expectPeek(token.IDENT) {
+			return false
+		}
+		table.Key.Exist = true
+		table.Key.KeyName = p.curToken.Literal
+		if !p.expectPeek(token.IDENT) {
+			return false
+		}
+		table.Key.Keys = p.curToken.Literal
 		p.nextToken()
 	}
-
-	return stmt
+	if p.curTokenIs(token.UNIQUE_KEY) {
+		if !p.expectPeek(token.IDENT) {
+			return false
+		}
+		table.Uk.Exist = true
+		table.Uk.KeyName = p.curToken.Literal
+		if !p.expectPeek(token.IDENT) {
+			return false
+		}
+		table.Uk.Keys = p.curToken.Literal
+		p.nextToken()
+	}
+	return true
 }
 
 func (p *Parser) parseColumn() *ast.Column {
@@ -115,27 +158,24 @@ func (p *Parser) parseColumn() *ast.Column {
 	if !p.expectPeek(token.IDENT) {
 		return nil
 	}
-
 	column.Name = p.curToken.Literal
 
-	if p.peekTokenIs(token.COLON) {
-		p.nextToken()
+	if !p.expectPeek(token.COLON) {
+		return nil
 	}
 
-	if p.peekTokenIs(token.LBRACE) {
-		p.nextToken()
+	if !p.expectPeek(token.IDENT) {
+		return nil
 	}
 
-	if p.peekTokenIs(token.ASTERISK) {
+	column.Type = p.curToken.Literal
 
-	}
 	p.nextToken()
 
-	stmt.Value = p.parseExpression(LOWEST)
-
-	if p.peekTokenIs(token.SEMICOLON) {
+	if p.curTokenIs(token.COMMENT) {
+		p.nextToken()
+		column.Comment = p.curToken.Literal
 		p.nextToken()
 	}
-
-	return stmt
+	return column
 }

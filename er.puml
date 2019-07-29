@@ -3,7 +3,7 @@
 'hide the spot
 'hide circle
 
-' avoid problems with angled crows feet
+'avoid problems with angled crows feet
 skinparam linetype ortho
 
 entity "Entity01" as e01 {
@@ -11,22 +11,22 @@ entity "Entity01" as e01 {
   *name : varchar(50) comment "name"
   --
   <<PK>> id
-  __
-  comment "e01 comment "
+  --
+  comment "e01 comment"
 }
 
 entity "Entity02" as e02 {
   *id : bigint
   *eo1_id : bigint
   *order_number : bigint
-  *site : varchar
+  *site : tinyint
   --
   <<KEY>> idx (e01_id)
-   <<UK>> udx (site,order_number)
-   <<PK>>  id
+  <<UK>> udx (site,order_number)
+  <<PK>>  id
+  --
+   comment "table comment "
 }
-
-
 e01 ||..o{ e02
 
 @enduml

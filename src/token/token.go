@@ -10,14 +10,11 @@ const (
 
 	COLON = ":"
 	LINE = "--"
-	COMMA     = ","
 	SEMICOLON = ";"
 	ASTERISK ="*"
-	LL ="<<"
-	RR =">>"
 
-	LPAREN = "("
-	RPAREN = ")"
+	QUOTATION = "\""
+
 	LBRACE = "{"
 	RBRACE = "}"
 
@@ -29,7 +26,7 @@ const (
 	// Keywords
 	AS = "as"
 	ENTITY = "ENTITY"
-	COMMENT = "commnet"
+	COMMENT = "comment"
 	KEY = "key"
 	PRIMARY_KEY = "primary_key"
 	UNIQUE_KEY  = "unique_key"
@@ -46,11 +43,12 @@ var keywords = map[string]TokenType{
 	"<<KEY>>":   KEY,
 	"<<PK>>":  PRIMARY_KEY,
 	"<<UK>>":     UNIQUE_KEY,
+	"comment":     COMMENT,
 }
 
 func LookupIdent(ident string) TokenType {
 	if tok, ok := keywords[ident]; ok {
 		return tok
 	}
-	return IDENT;
+	return IDENT
 }

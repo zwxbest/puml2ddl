@@ -7,7 +7,7 @@ import (
 "os"
 )
 
-func Read(file string,f func(string,int)) {
+func Read(file string,f func(string,int) bool) {
 
 	fi, err := os.Open(file)
 	if err != nil {
@@ -23,7 +23,9 @@ func Read(file string,f func(string,int)) {
 		if c == io.EOF {
 			break
 		}
-		f(string(a),lineN)
+		if !f(string(a),lineN) {
+			break
+		}
 		lineN++
 	}
 }
